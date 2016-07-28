@@ -4,14 +4,14 @@
 	<parent>
 		<groupId>org.developerworld.frameworks</groupId>
 		<artifactId>dw-frameworks-parent</artifactId>
-		<version>0.0.4</version>
+		<version>0.0.10</version>
 		<relativePath>../dw-frameworks-parent/pom.xml</relativePath>
 	</parent>
 
 	<artifactId>dw-frameworks-mybatis</artifactId>
 	<packaging>jar</packaging>
 	<name>dw-frameworks-mybatis</name>
-	<version>0.0.9-SNAPSHOT</version>
+	<version>0.0.1-SNAPSHOT</version>
 	<description>mybatis框架扩展包</description>
 	
 	<!-- scm配置 -->
@@ -22,6 +22,11 @@
 	</scm>
 	
 	<dependencies>
+		<!-- dw组件 -->
+		<dependency>
+			<groupId>org.developerworld.commons</groupId>
+			<artifactId>dw-commons-dbutils</artifactId>
+		</dependency>
 		<!-- mybatis -->
 		<dependency>
 			<groupId>org.mybatis</groupId>

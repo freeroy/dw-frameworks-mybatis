@@ -11,7 +11,7 @@
 	<artifactId>dw-frameworks-mybatis</artifactId>
 	<packaging>jar</packaging>
 	<name>dw-frameworks-mybatis</name>
-	<version>0.0.1</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<description>mybatis框架扩展包</description>
 	
 	<!-- scm配置 -->

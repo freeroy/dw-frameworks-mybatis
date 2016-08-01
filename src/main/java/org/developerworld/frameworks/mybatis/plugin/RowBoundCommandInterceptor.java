@@ -1,10 +1,8 @@
 package org.developerworld.frameworks.mybatis.plugin;
 
 import java.sql.Connection;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.List;
 import java.util.Properties;
-import java.util.Map.Entry;
 
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -21,9 +19,11 @@ import org.apache.ibatis.session.RowBounds;
 import org.developerworld.commons.dbutils.sql.command.RowBoundCommand;
 import org.developerworld.commons.dbutils.sql.dialect.rowbound.RowBoundDialect;
 import org.developerworld.commons.dbutils.sql.dialect.rowbound.RowBoundDialectFactory;
+import org.developerworld.frameworks.mybatis.mapping.SqlSourceWrapper;
 
 /**
  * 动态分页插件
+ * 
  * @author Roy Huang
  *
  */
@@ -31,8 +31,12 @@ import org.developerworld.commons.dbutils.sql.dialect.rowbound.RowBoundDialectFa
 		ResultHandler.class }, method = "query", type = Executor.class) })
 public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 
+	/* 分页方言对象 */
 	private RowBoundDialect rowBoundDialect;
+	/* 分页方言类 */
 	private Class<RowBoundDialect> rowBoundDialectClass;
+	/* 是否隐藏参数 */
+	private boolean hideArg = true;
 
 	public void setRowBoundDialect(RowBoundDialect rowBoundDialect) {
 		this.rowBoundDialect = rowBoundDialect;
@@ -42,9 +46,19 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 		this.rowBoundDialectClass = rowBoundDialectClass;
 	}
 
+	public boolean isHideArg() {
+		return hideArg;
+	}
+
+	public void setHideArg(boolean hideArg) {
+		this.hideArg = hideArg;
+	}
+
 	@Override
 	public void setProperties(Properties properties) {
 		try {
+			if (properties.containsKey("hideArg"))
+				hideArg = Boolean.valueOf(properties.getProperty("hideArg"));
 			if (properties.containsKey("rowBoundDialectClass"))
 				rowBoundDialectClass = (Class<RowBoundDialect>) Class
 						.forName(properties.getProperty("rowBoundDialectClass"));
@@ -90,10 +104,15 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 		if (args.length > 1 && args[1] == null)
 			return invocation.proceed();
 		Object parameterObject = args[1];
-		RowBoundCommand rowBoundCommand = getPageCommand(parameterObject);
+		RowBoundCommand rowBoundCommand = null;
+		List<RowBoundCommand> rowBoundCommands = getArgObjects(invocation, RowBoundCommand.class);
 		// 无分页对象，代表无需分页，传递至下一个执行链
-		if (rowBoundCommand == null)
+		if (rowBoundCommands == null || rowBoundCommands.size() == 0)
 			return invocation.proceed();
+		rowBoundCommand = rowBoundCommands.get(rowBoundCommands.size() - 1);
+		// 判断是否隐藏参数
+		if (isHideArg())
+			removeArgs(invocation, RowBoundCommand.class, true);
 		Object rst = null;
 		// 获取sql对象
 		BoundSql boundSql = mappedStatement.getBoundSql(parameterObject);
@@ -126,8 +145,9 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 			RowBounds oldRowBounds = null;
 			if (args.length > 2 && args[2] != null)
 				oldRowBounds = (RowBounds) args[2];
-			SqlSource _sqlSource = mappedStatement.getSqlSource();
+			SqlSource sqlSource = mappedStatement.getSqlSource();
 			MetaObject mappedStatementMetaObject = SystemMetaObject.forObject(mappedStatement);
+			SqlSourceWrapper sqlSourceWarpper = new SqlSourceWrapper(sqlSource, pageSql);
 			try {
 				// 若分页插件不支持指定开始位置，需要利用原生rowBound进行跳过
 				RowBounds newRowBounds = null;
@@ -136,40 +156,18 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 					newRowBounds = new RowBounds(rowBoundCommand.getOffset(), rowBoundCommand.getLimit());
 					args[2] = newRowBounds;
 				}
-				// 设置语句
-				MetaObject boundSqlMetaObject = SystemMetaObject.forObject(boundSql);
-				boundSqlMetaObject.setValue("sql", pageSql);
-				mappedStatementMetaObject.setValue("sqlSource", new SqlSourceWrap(boundSql));
+				mappedStatementMetaObject.setValue("sqlSource", sqlSourceWarpper);
 				args[0] = mappedStatement;
 				rst = invocation.proceed();
 			} finally {
+				// 删除当前线程对象
+				sqlSourceWarpper.clearLocalSql();
 				// 还原sqlSource
-				mappedStatementMetaObject.setValue("sqlSource", _sqlSource);
+				mappedStatementMetaObject.setValue("sqlSource", sqlSource);
 				args[2] = oldRowBounds;
 			}
 		}
 		return rst;
-	}
-
-	/**
-	 * 从参数中获取分页对象
-	 * 
-	 * @param parameterObject
-	 * @return
-	 */
-	private RowBoundCommand getPageCommand(Object parameterObject) {
-		if (parameterObject instanceof RowBoundCommand)
-			return (RowBoundCommand) parameterObject;
-		else if (parameterObject instanceof Map) {
-			Map parameterMap = (Map) parameterObject;
-			Iterator<Entry> iterator = parameterMap.entrySet().iterator();
-			while (iterator.hasNext()) {
-				Entry entry = iterator.next();
-				if (entry.getValue() instanceof RowBoundCommand)
-					return (RowBoundCommand) entry.getValue();
-			}
-		}
-		return null;
 	}
 
 	/**

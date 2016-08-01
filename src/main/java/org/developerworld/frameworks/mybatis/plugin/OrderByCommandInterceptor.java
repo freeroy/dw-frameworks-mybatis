@@ -1,8 +1,7 @@
 package org.developerworld.frameworks.mybatis.plugin;
 
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.List;
+import java.util.Properties;
 
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -17,15 +16,34 @@ import org.apache.ibatis.reflection.SystemMetaObject;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.developerworld.commons.dbutils.sql.command.OrderByCommand;
+import org.developerworld.frameworks.mybatis.mapping.SqlSourceWrapper;
 
 /**
  * 动态排序插件
+ * 
  * @author Roy Huang
  *
  */
 @Intercepts({ @Signature(args = { MappedStatement.class, Object.class, RowBounds.class,
 		ResultHandler.class }, method = "query", type = Executor.class) })
 public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
+
+	/* 是否隐藏参数 */
+	private boolean hideArg = true;
+
+	public boolean isHideArg() {
+		return hideArg;
+	}
+
+	public void setHideArg(boolean hideArg) {
+		this.hideArg = hideArg;
+	}
+
+	@Override
+	public void setProperties(Properties properties) {
+		if (properties.containsKey("hideArg"))
+			hideArg = Boolean.valueOf(properties.getProperty("hideArg"));
+	}
 
 	public Object intercept(Invocation invocation) throws Throwable {
 		// 提取核心参数
@@ -37,10 +55,12 @@ public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 		if (args.length > 1 && args[1] == null)
 			return invocation.proceed();
 		Object parameterObject = args[1];
-		OrderByCommand orderByCommand = getOrderByCommand(parameterObject);
+		OrderByCommand orderByCommand = null;
+		List<OrderByCommand> orderByCommands=getArgObjects(invocation, OrderByCommand.class);
 		// 无排序对象，传递至下一个执行链
-		if (orderByCommand == null)
+		if (orderByCommands==null || orderByCommands.size()==0)
 			return invocation.proceed();
+		orderByCommand=orderByCommands.get(orderByCommands.size()-1);
 		// 获取sql对象
 		BoundSql boundSql = mappedStatement.getBoundSql(parameterObject);
 		// 获取原生sql信息
@@ -50,19 +70,22 @@ public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 		// 若构建不了，传递至下一个执行链
 		if (orderBySql == null)
 			return invocation.proceed();
-		Object rst=null;
-		SqlSource _sqlSource=mappedStatement.getSqlSource();
+		// 判断是否隐藏参数
+		if (isHideArg())
+			removeArgs(invocation, OrderByCommand.class, true);
+		Object rst = null;
+		SqlSource sqlSource = mappedStatement.getSqlSource();
 		MetaObject mappedStatementMetaObject = SystemMetaObject.forObject(mappedStatement);
-		try{
-			MetaObject boundSqlMetaObject = SystemMetaObject.forObject(boundSql);
-			boundSqlMetaObject.setValue("sql", orderBySql);
-			mappedStatementMetaObject.setValue("sqlSource", new SqlSourceWrap(boundSql));
+		SqlSourceWrapper sqlSourceWarpper = new SqlSourceWrapper(sqlSource, orderBySql);
+		try {
+			mappedStatementMetaObject.setValue("sqlSource", sqlSourceWarpper);
 			args[0] = mappedStatement;
-			rst=invocation.proceed();
-		}
-		finally{
-			//还原对象
-			mappedStatementMetaObject.setValue("sqlSource", _sqlSource);
+			rst = invocation.proceed();
+		} finally {
+			// 删除当前线程对象
+			sqlSourceWarpper.clearLocalSql();
+			// 还原对象
+			mappedStatementMetaObject.setValue("sqlSource", sqlSource);
 		}
 		return rst;
 	}
@@ -77,29 +100,8 @@ public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 	 */
 	private String buildOrderBySql(Invocation invocation, String sql, OrderByCommand orderByCommand) {
 		if (orderByCommand.hasOrder())
-			sql += " " + orderByCommand.getWithOrderBySql();
+			sql += " " + orderByCommand.buildSql();
 		return sql;
-	}
-
-	/**
-	 * 获取排序参数对象
-	 * 
-	 * @param parameterObject
-	 * @return
-	 */
-	private OrderByCommand getOrderByCommand(Object parameterObject) {
-		if (parameterObject instanceof OrderByCommand)
-			return (OrderByCommand) parameterObject;
-		else if (parameterObject instanceof Map) {
-			Map parameterMap = (Map) parameterObject;
-			Iterator<Entry> iterator = parameterMap.entrySet().iterator();
-			while (iterator.hasNext()) {
-				Entry entry = iterator.next();
-				if (entry.getValue() instanceof OrderByCommand)
-					return (OrderByCommand) entry.getValue();
-			}
-		}
-		return null;
 	}
 
 }

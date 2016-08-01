@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.developerworld.frameworks</groupId>
 		<artifactId>dw-frameworks-parent</artifactId>
-		<version>0.0.10</version>
+		<version>0.0.12</version>
 		<relativePath>../dw-frameworks-parent/pom.xml</relativePath>
 	</parent>
 
@@ -22,6 +22,10 @@
 	</scm>
 	
 	<dependencies>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+		</dependency>
 		<!-- dw组件 -->
 		<dependency>
 			<groupId>org.developerworld.commons</groupId>
@@ -31,7 +35,7 @@
 		<dependency>
 			<groupId>org.mybatis</groupId>
 			<artifactId>mybatis</artifactId>
-			<version>3.4.1</version>
+			<scope>provided</scope>
 		</dependency>
 		<!-- 
 		<dependency>

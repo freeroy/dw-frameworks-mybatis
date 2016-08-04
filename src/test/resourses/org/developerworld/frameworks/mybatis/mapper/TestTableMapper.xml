@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper
+	namespace="org.developerworld.frameworks.mybatis.mapper.TestTableMapper">
+
+	<!-- 对象映射 -->
+	<resultMap id="testTableResultMap"
+		type="org.developerworld.frameworks.mybatis.model.TestTable">
+		<id property="id" column="ID" />
+		<result property="name" column="NAME" />
+		<result property="sex" column="SEX" />
+		<result property="birthDate" column="BIRTH_DATE" javaType="java.sql.Timestamp" jdbcType="TIMESTAMP" />
+		<result property="description" column="DESCRIPTION" />
+		<result property="loginTimes" column="LOGIN_TIMES" />
+	</resultMap>
+	
+	<insert id="insert" useGeneratedKeys="true" keyColumn="ID" keyProperty="id">
+		<![CDATA[insert into TEST_TABLE(NAME,SEX,BIRTH_DATE,DESCRIPTION,LOGIN_TIMES) values(#{name},#{sex},#{birthDate},#{description},#{loginTimes})]]>
+	</insert>
+	
+	<update id="update">
+	<![CDATA[update TEST_TABLE set
+	 NAME=#{name},SEX=#{sex},BIRTH_DATE=#{birthDate},DESCRIPTION=#{description},LOGIN_TIMES=#{loginTimes}
+	 where ID=#{id}]]>
+	</update>
+	
+	<delete id="delete">
+	<![CDATA[delete from TEST_TABLE where ID=#{id}]]>
+	</delete>
+
+	<select id="selectByPK" resultMap="testTableResultMap">
+		<![CDATA[select * from TEST_TABLE where id=#{id}]]>
+	</select>
+
+	<select id="selectList" resultMap="testTableResultMap">
+		<![CDATA[select * from TEST_TABLE]]>
+	</select>
+	
+	<select id="selectCount" resultType="long">
+		<![CDATA[select count(*) from TEST_TABLE]]>
+	</select>
+	
+	<select id="selectListByName" resultMap="testTableResultMap">
+		<![CDATA[select * from TEST_TABLE where name like #{name} ]]>
+	</select>
+	
+	<select id="selectCountByName" resultType="long">
+		<![CDATA[select count(*) from TEST_TABLE where name like #{name} ]]>
+	</select>
+
+	<select id="selectListByNames" resultMap="testTableResultMap">
+		<![CDATA[select * from TEST_TABLE ]]>
+		<where>
+			<foreach item="name" index="index" collection="names" separator="or">
+				NAME like #{name}
+			</foreach>
+		</where>
+	</select>
+	
+	<select id="selectCountByNames" resultType="long">
+		<![CDATA[select count(*) from TEST_TABLE ]]>
+		<where>
+			<foreach item="name" index="index" collection="names" separator="or">
+				NAME like #{name}
+			</foreach>
+		</where>
+	</select>
+
+</mapper>

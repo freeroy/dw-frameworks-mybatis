@@ -35,8 +35,6 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 	private RowBoundDialect rowBoundDialect;
 	/* 分页方言类 */
 	private Class<RowBoundDialect> rowBoundDialectClass;
-	/* 是否隐藏参数 */
-	private boolean hideArg = true;
 
 	public void setRowBoundDialect(RowBoundDialect rowBoundDialect) {
 		this.rowBoundDialect = rowBoundDialect;
@@ -46,19 +44,9 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 		this.rowBoundDialectClass = rowBoundDialectClass;
 	}
 
-	public boolean isHideArg() {
-		return hideArg;
-	}
-
-	public void setHideArg(boolean hideArg) {
-		this.hideArg = hideArg;
-	}
-
 	@Override
 	public void setProperties(Properties properties) {
 		try {
-			if (properties.containsKey("hideArg"))
-				hideArg = Boolean.valueOf(properties.getProperty("hideArg"));
 			if (properties.containsKey("rowBoundDialectClass"))
 				rowBoundDialectClass = (Class<RowBoundDialect>) Class
 						.forName(properties.getProperty("rowBoundDialectClass"));
@@ -110,9 +98,6 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 		if (rowBoundCommands == null || rowBoundCommands.size() == 0)
 			return invocation.proceed();
 		rowBoundCommand = rowBoundCommands.get(rowBoundCommands.size() - 1);
-		// 判断是否隐藏参数
-		if (isHideArg())
-			removeArgs(invocation, RowBoundCommand.class, true);
 		Object rst = null;
 		// 获取sql对象
 		BoundSql boundSql = mappedStatement.getBoundSql(parameterObject);

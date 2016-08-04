@@ -1,7 +1,6 @@
 package org.developerworld.frameworks.mybatis.plugin;
 
 import java.util.List;
-import java.util.Properties;
 
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -28,23 +27,6 @@ import org.developerworld.frameworks.mybatis.mapping.SqlSourceWrapper;
 		ResultHandler.class }, method = "query", type = Executor.class) })
 public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 
-	/* 是否隐藏参数 */
-	private boolean hideArg = true;
-
-	public boolean isHideArg() {
-		return hideArg;
-	}
-
-	public void setHideArg(boolean hideArg) {
-		this.hideArg = hideArg;
-	}
-
-	@Override
-	public void setProperties(Properties properties) {
-		if (properties.containsKey("hideArg"))
-			hideArg = Boolean.valueOf(properties.getProperty("hideArg"));
-	}
-
 	public Object intercept(Invocation invocation) throws Throwable {
 		// 提取核心参数
 		Object[] args = invocation.getArgs();
@@ -70,9 +52,6 @@ public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 		// 若构建不了，传递至下一个执行链
 		if (orderBySql == null)
 			return invocation.proceed();
-		// 判断是否隐藏参数
-		if (isHideArg())
-			removeArgs(invocation, OrderByCommand.class, true);
 		Object rst = null;
 		SqlSource sqlSource = mappedStatement.getSqlSource();
 		MetaObject mappedStatementMetaObject = SystemMetaObject.forObject(mappedStatement);

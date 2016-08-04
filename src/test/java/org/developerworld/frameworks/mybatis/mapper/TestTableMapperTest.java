@@ -17,8 +17,10 @@ import org.developerworld.frameworks.mybatis.model.TestTable;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore
 public class TestTableMapperTest {
 	
 	private static SqlSession session;

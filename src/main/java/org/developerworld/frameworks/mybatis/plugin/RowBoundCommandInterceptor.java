@@ -1,8 +1,8 @@
 package org.developerworld.frameworks.mybatis.plugin;
 
 import java.sql.Connection;
-import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -35,6 +35,7 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 	private RowBoundDialect rowBoundDialect;
 	/* 分页方言类 */
 	private Class<RowBoundDialect> rowBoundDialectClass;
+	private boolean unknowDialect=false;
 
 	public void setRowBoundDialect(RowBoundDialect rowBoundDialect) {
 		this.rowBoundDialect = rowBoundDialect;
@@ -56,6 +57,8 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 	}
 
 	private RowBoundDialect getRowBoundDialect(Invocation invocation) {
+		if(unknowDialect)
+			return null;
 		if (rowBoundDialect == null) {
 			if (rowBoundDialectClass != null) {
 				try {
@@ -78,6 +81,8 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 				}
 			}
 		}
+		if(rowBoundDialect==null)
+			unknowDialect=true;
 		return rowBoundDialect;
 	}
 
@@ -93,11 +98,16 @@ public class RowBoundCommandInterceptor extends AbstractInterceptorSupport {
 			return invocation.proceed();
 		Object parameterObject = args[1];
 		RowBoundCommand rowBoundCommand = null;
-		List<RowBoundCommand> rowBoundCommands = getArgObjects(invocation, RowBoundCommand.class);
+		Set<RowBoundCommand> rowBoundCommands = getArgObjects(invocation, RowBoundCommand.class);
 		// 无分页对象，代表无需分页，传递至下一个执行链
 		if (rowBoundCommands == null || rowBoundCommands.size() == 0)
 			return invocation.proceed();
-		rowBoundCommand = rowBoundCommands.get(rowBoundCommands.size() - 1);
+		else if(rowBoundCommands.size()>1)
+			throw new IllegalArgumentException("RowBoundCommand args can only set one!");
+		rowBoundCommand = rowBoundCommands.iterator().next();
+		//判断是否有分页条件
+		if(!rowBoundCommand.hasLimit() && !rowBoundCommand.hasOffset())
+			return invocation.proceed();
 		Object rst = null;
 		// 获取sql对象
 		BoundSql boundSql = mappedStatement.getBoundSql(parameterObject);

@@ -1,6 +1,6 @@
 package org.developerworld.frameworks.mybatis.plugin;
 
-import java.util.List;
+import java.util.Set;
 
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -38,11 +38,16 @@ public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 			return invocation.proceed();
 		Object parameterObject = args[1];
 		OrderByCommand orderByCommand = null;
-		List<OrderByCommand> orderByCommands=getArgObjects(invocation, OrderByCommand.class);
+		Set<OrderByCommand> orderByCommands = getArgObjects(invocation, OrderByCommand.class);
 		// 无排序对象，传递至下一个执行链
-		if (orderByCommands==null || orderByCommands.size()==0)
+		if (orderByCommands == null || orderByCommands.size() == 0)
 			return invocation.proceed();
-		orderByCommand=orderByCommands.get(orderByCommands.size()-1);
+		else if (orderByCommands.size() > 1)
+			throw new IllegalArgumentException("OrderByCommand args can only set one!");
+		orderByCommand = orderByCommands.iterator().next();
+		// 是否有排序信息
+		if (!orderByCommand.hasOrder())
+			return invocation.proceed();
 		// 获取sql对象
 		BoundSql boundSql = mappedStatement.getBoundSql(parameterObject);
 		// 获取原生sql信息
@@ -78,9 +83,15 @@ public class OrderByCommandInterceptor extends AbstractInterceptorSupport {
 	 * @return
 	 */
 	private String buildOrderBySql(Invocation invocation, String sql, OrderByCommand orderByCommand) {
-		if (orderByCommand.hasOrder())
-			sql += " " + orderByCommand.buildSql();
-		return sql;
+		// 注意！这里假设原语句中，不存在分页信息
+		// 判断是否有for update
+		int bi = sql.toLowerCase().lastIndexOf(" for update");
+		bi = bi == -1 ? sql.length() : bi;
+		if (sql.substring(0, bi).toLowerCase().indexOf(" order by ") != -1)
+			return sql.substring(0, bi) + "," + orderByCommand.buildSqlWithOutOrderBy()
+					+ sql.substring(bi, sql.length());
+		else
+			return sql.substring(0, bi) + " " + orderByCommand.buildSql() + sql.substring(bi, sql.length());
 	}
 
 }
